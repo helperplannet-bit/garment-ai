@@ -1,0 +1,203 @@
+.gafs-props-panel {
+  width: 240px;
+  background: var(--bg-card);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+
+.gafs-props-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 10px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  background: var(--bg-card);
+  z-index: 1;
+}
+
+.gafs-props-type-badge {
+  font-size: 10px;
+  font-weight: 600;
+  background: rgba(124,58,237,0.15);
+  color: var(--accent-purple);
+  border: 1px solid rgba(124,58,237,0.3);
+  padding: 2px 7px;
+  border-radius: 10px;
+  text-transform: capitalize;
+}
+
+.gafs-props-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40px 20px;
+  color: var(--text-muted);
+  text-align: center;
+  gap: 12px;
+}
+.gafs-props-empty svg { width: 32px; height: 32px; opacity: 0.4; }
+.gafs-props-empty p { font-size: 12px; line-height: 1.5; margin: 0; }
+
+.gafs-props-section {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.gafs-props-section-title {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-muted);
+  margin-bottom: 2px;
+}
+
+.gafs-prop-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+}
+
+.gafs-prop-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  width: 56px;
+  flex-shrink: 0;
+  font-weight: 500;
+}
+
+.gafs-prop-input {
+  flex: 1;
+  background: var(--bg-hover);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 12px;
+  padding: 4px 8px;
+  outline: none;
+  font-family: inherit;
+  transition: border-color 0.15s;
+}
+.gafs-prop-input:focus { border-color: var(--accent-purple); }
+
+.gafs-prop-select {
+  flex: 1;
+  background: var(--bg-hover);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 12px;
+  padding: 4px 8px;
+  outline: none;
+  font-family: inherit;
+  cursor: pointer;
+}
+.gafs-prop-select:focus { border-color: var(--accent-purple); }
+
+.gafs-prop-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.gafs-color-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+.gafs-color-input {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  padding: 0;
+  background: none;
+  flex-shrink: 0;
+}
+.gafs-color-hex {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-family: monospace;
+}
+
+.gafs-slider-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+.gafs-slider {
+  flex: 1;
+  accent-color: var(--accent-purple);
+  cursor: pointer;
+  height: 4px;
+}
+.gafs-slider-val {
+  font-size: 11px;
+  color: var(--text-secondary);
+  min-width: 36px;
+  text-align: right;
+}
+
+.gafs-text-style-btns {
+  display: flex;
+  gap: 4px;
+}
+.gafs-style-btn {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border);
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+.gafs-style-btn.active {
+  background: rgba(124,58,237,0.15);
+  border-color: var(--accent-purple);
+  color: var(--accent-purple);
+}
+.gafs-style-btn:hover { border-color: var(--accent-purple); color: var(--text-primary); }
+
+.gafs-action-btns {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.gafs-action-btn {
+  flex: 1;
+  padding: 6px 8px;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.gafs-action-btn:hover { border-color: var(--accent-purple); color: var(--accent-purple); }
+.gafs-action-btn--danger { color: #EF4444; }
+.gafs-action-btn--danger:hover { border-color: #EF4444; background: rgba(239,68,68,0.1); }

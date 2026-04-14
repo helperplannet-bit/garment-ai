@@ -1,0 +1,91 @@
+.gafs-toolbar {
+  width: 80px;
+  background: var(--bg-card);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 0;
+  gap: 2px;
+  position: fixed;
+  left: 0;
+  top: 56px;
+  bottom: 0;
+  z-index: 50;
+  overflow-y: auto;
+}
+
+.gafs-toolbar__tools {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: 0 8px;
+}
+
+.gafs-toolbar__divider {
+  width: 48px;
+  height: 1px;
+  background: var(--border);
+  margin: 8px auto;
+  flex-shrink: 0;
+}
+
+.gafs-toolbar__extras {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: 0 8px;
+}
+
+.gafs-tool-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+  padding: 8px 4px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: all 0.15s;
+}
+
+.gafs-tool-btn svg {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.gafs-tool-label {
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+
+.gafs-tool-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border-color: var(--border);
+}
+
+.gafs-tool-btn--active {
+  background: rgba(124, 58, 237, 0.15);
+  border-color: var(--accent-purple);
+  color: var(--accent-purple);
+}
+
+.gafs-tool-btn--ai {
+  color: #2DD4BF;
+}
+.gafs-tool-btn--ai:hover,
+.gafs-tool-btn--ai.gafs-tool-btn--active {
+  background: rgba(45, 212, 191, 0.12);
+  border-color: #2DD4BF;
+  color: #2DD4BF;
+}

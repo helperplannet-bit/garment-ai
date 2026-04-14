@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0d0d14" />
+    <meta name="description" content="Garment AI Factory System v1 — Local AI Design Studio" />
+    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+    <title>GAFS v1 — Garment AI Factory System</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+
+    <!-- Fabric.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+
+    <style>
+      html, body, #root { height: 100%; margin: 0; padding: 0; background: #0d0d14; }
+      #gafs-splash {
+        position: fixed; inset: 0; background: #0d0d14;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        gap: 16px; z-index: 9999; transition: opacity 0.4s;
+      }
+      #gafs-splash h1 {
+        font-family: Inter, sans-serif; font-size: 22px; font-weight: 800;
+        background: linear-gradient(135deg,#7C3AED,#2DD4BF); -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent; letter-spacing: 2px;
+      }
+      #gafs-splash p  { font-family: Inter, sans-serif; font-size: 13px; color: #5a5a80; }
+      .gafs-splash-bar { width: 200px; height: 3px; background: #1c1c2e; border-radius: 2px; overflow: hidden; }
+      .gafs-splash-bar-fill {
+        height: 100%; background: linear-gradient(90deg,#7C3AED,#2DD4BF);
+        animation: barAnim 1.2s ease-in-out infinite alternate; border-radius: 2px;
+      }
+      @keyframes barAnim { from { width: 20%; } to { width: 90%; } }
+    </style>
+  </head>
+  <body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="gafs-splash">
+      <h1>GAFS v1</h1>
+      <p>Garment AI Factory System — Loading Studio…</p>
+      <div class="gafs-splash-bar"><div class="gafs-splash-bar-fill"></div></div>
+    </div>
+    <div id="root"></div>
+    <script>
+      window.addEventListener('load', function() {
+        setTimeout(function() {
+          var s = document.getElementById('gafs-splash');
+          if (s) { s.style.opacity = '0'; setTimeout(function(){ s.remove(); }, 400); }
+        }, 800);
+      });
+    </script>
+  </body>
+</html>

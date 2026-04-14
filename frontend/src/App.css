@@ -1,0 +1,85 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+/* ── CSS Variables ─────────────────────────────────────────────────────────── */
+:root {
+  --bg-base:      #0d0d14;
+  --bg-card:      #13131f;
+  --bg-hover:     #1c1c2e;
+  --bg-canvas:    #0a0a12;
+  --border:       rgba(255,255,255,0.08);
+  --text-primary: #f0f0ff;
+  --text-secondary: #a0a0c0;
+  --text-muted:   #5a5a80;
+  --accent-purple: #7C3AED;
+  --accent-teal:  #2DD4BF;
+}
+
+/* ── Reset ─────────────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background: var(--bg-base);
+  color: var(--text-primary);
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+}
+
+/* ── App Shell ─────────────────────────────────────────────────────────────── */
+.gafs-app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.gafs-workspace {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  margin-top: 56px; /* header height */
+}
+
+/* Left sidebar (toolbar + layers) */
+.gafs-left-sidebar {
+  width: 80px;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-card);
+  border-right: 1px solid var(--border);
+  position: fixed;
+  left: 0;
+  top: 56px;
+  bottom: 0;
+  z-index: 50;
+  overflow: hidden;
+}
+
+/* The Toolbar takes flex space, LayersPanel at bottom */
+.gafs-left-sidebar .gafs-toolbar {
+  position: relative;
+  flex: 1;
+  top: auto;
+  left: auto;
+  border-right: none;
+}
+
+/* Main content area */
+.gafs-main {
+  flex: 1;
+  margin-left: 80px;
+  margin-right: 240px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Scrollbar styling ─────────────────────────────────────────────────────── */
+::-webkit-scrollbar          { width: 5px; height: 5px; }
+::-webkit-scrollbar-track    { background: transparent; }
+::-webkit-scrollbar-thumb    { background: var(--border); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(124,58,237,0.4); }
+
+/* ── Utility ───────────────────────────────────────────────────────────────── */
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
