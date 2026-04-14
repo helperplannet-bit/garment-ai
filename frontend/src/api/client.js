@@ -19,20 +19,23 @@ export const uploadImage = (file) => {
 };
 
 // AI Generate
-export const aiGenerate = (prompt, negPrompt = "", width = 512, height = 512, steps = 20) =>
-  API.post("/ai-generate", { prompt, negative_prompt: negPrompt, width, height, steps });
+export const aiGenerate = (prompt, negPrompt = "", width = 512, height = 512, steps = 20, model = null) =>
+  API.post("/ai-generate", { prompt, negative_prompt: negPrompt, width, height, steps, model });
 
 // AI Edit (img2img)
-export const aiEdit = (imageBase64, prompt, negPrompt = "", strength = 0.7, steps = 20) =>
-  API.post("/ai-edit", { image_base64: imageBase64, prompt, negative_prompt: negPrompt, strength, steps });
+export const aiEdit = (imageBase64, prompt, negPrompt = "", strength = 0.7, steps = 20, model = null) =>
+  API.post("/ai-edit", { image_base64: imageBase64, prompt, negative_prompt: negPrompt, strength, steps, model });
 
 // AI Inpaint
-export const aiInpaint = (imageBase64, maskBase64, prompt, negPrompt = "") =>
-  API.post("/ai-inpaint", { image_base64: imageBase64, mask_base64: maskBase64, prompt, negative_prompt: negPrompt });
+export const aiInpaint = (imageBase64, maskBase64, prompt, negPrompt = "", steps = 20, model = null) =>
+  API.post("/ai-inpaint", { image_base64: imageBase64, mask_base64: maskBase64, prompt, negative_prompt: negPrompt, steps, model });
 
 // Remove Background
 export const removeBg = (imageBase64) =>
   API.post("/ai-remove-bg", { image_base64: imageBase64 });
+
+// AI Models
+export const getAIModels = () => API.get("/ai-models");
 
 // Mockup
 export const listMockups = () => API.get("/mockups");

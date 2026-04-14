@@ -1,4 +1,3 @@
-// GAFS v1 — Global State Store (Zustand)
 import { create } from "zustand";
 
 const useEditorStore = create((set, get) => ({
@@ -6,61 +5,52 @@ const useEditorStore = create((set, get) => ({
   canvas: null,
   setCanvas: (canvas) => set({ canvas }),
 
-  // Active tool
-  activeTool: "select", // select | text | rect | circle | triangle | image | brush
+  // Tool state
+  activeTool: "select", // select | text | rect | circle | triangle | image | brush | move | eraser | mask
   setActiveTool: (tool) => set({ activeTool: tool }),
 
-  // Grid visibility
+  // View state
   showGrid: false,
   toggleGrid: () => set((s) => ({ showGrid: !s.showGrid })),
+  zoom: 1,
+  setZoom: (val) => set({ zoom: val }),
 
-  // History
+  // History system
   history: [],
   historyIndex: -1,
   pushHistory: (state) =>
     set((s) => {
       const trimmed = s.history.slice(0, s.historyIndex + 1);
-      return {
-        history: [...trimmed, state],
-        historyIndex: trimmed.length,
-      };
+      return { history: [...trimmed, state], historyIndex: trimmed.length };
     }),
   canUndo: () => get().historyIndex > 0,
   canRedo: () => get().historyIndex < get().history.length - 1,
-
   undo: () => {
-    const { history, historyIndex, canvas } = get();
-    if (historyIndex > 0) {
-      const nextIndex = historyIndex - 1;
-      const state = history[nextIndex];
-      set({ historyIndex: nextIndex });
-      if (canvas) {
-        canvas.loadFromJSON(state, () => canvas.renderAll());
-      }
+    const { historyIndex, history, canvas } = get();
+    if (historyIndex > 0 && canvas) {
+      canvas.loadFromJSON(history[historyIndex - 1], () => {
+        canvas.renderAll();
+        set({ historyIndex: historyIndex - 1 });
+      });
     }
   },
-
   redo: () => {
-    const { history, historyIndex, canvas } = get();
-    if (historyIndex < history.length - 1) {
-      const nextIndex = historyIndex + 1;
-      const state = history[nextIndex];
-      set({ historyIndex: nextIndex });
-      if (canvas) {
-        canvas.loadFromJSON(state, () => canvas.renderAll());
-      }
+    const { historyIndex, history, canvas } = get();
+    if (historyIndex < history.length - 1 && canvas) {
+      canvas.loadFromJSON(history[historyIndex + 1], () => {
+        canvas.renderAll();
+        set({ historyIndex: historyIndex + 1 });
+      });
     }
   },
 
-  // Selected object properties
+  // Sidebar & Layers
   selectedObject: null,
   setSelectedObject: (obj) => set({ selectedObject: obj }),
-
-  // Layers
   layers: [],
   setLayers: (layers) => set({ layers }),
-
-  // Project
+  
+  // Project tracking
   projectName: "Untitled Project",
   projectId: null,
   setProjectName: (name) => set({ projectName: name }),
@@ -68,23 +58,25 @@ const useEditorStore = create((set, get) => ({
   isSaved: true,
   setIsSaved: (v) => set({ isSaved: v }),
 
-  // AI Status
+  // AI Connection & Status
   aiOnline: false,
   setAiOnline: (v) => set({ aiOnline: v }),
+  aiModels: [],
+  setAiModels: (models) => set({ aiModels: models }),
   aiLoading: false,
   setAiLoading: (v) => set({ aiLoading: v }),
   lastAiImage: null,
   setLastAiImage: (img) => set({ lastAiImage: img }),
 
-  // Panels
-  activePanel: null, // null | "ai" | "mockup" | "projects"
+  // UI Panels
+  activePanel: null, // null | "ai" | "mockup"
   setActivePanel: (p) => set((s) => ({ activePanel: s.activePanel === p ? null : p })),
 
-  // Mockup
+  // Mockup settings
   mockupResult: null,
   setMockupResult: (img) => set({ mockupResult: img }),
-
-  // Canvas config
+  
+  // Base canvas settings
   canvasWidth: 800,
   canvasHeight: 600,
   setCanvasSize: (w, h) => set({ canvasWidth: w, canvasHeight: h }),
