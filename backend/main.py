@@ -63,6 +63,7 @@ class AIGenerateRequest(BaseModel):
     width: Optional[int] = 512
     height: Optional[int] = 512
     steps: Optional[int] = 20
+    model: Optional[str] = None
 
 class AIEditRequest(BaseModel):
     image_base64: str
@@ -70,6 +71,7 @@ class AIEditRequest(BaseModel):
     negative_prompt: Optional[str] = ""
     strength: Optional[float] = 0.7
     steps: Optional[int] = 20
+    model: Optional[str] = None
 
 class InpaintRequest(BaseModel):
     image_base64: str
@@ -77,6 +79,7 @@ class InpaintRequest(BaseModel):
     prompt: str
     negative_prompt: Optional[str] = ""
     steps: Optional[int] = 20
+    model: Optional[str] = None
 
 class BackgroundRemoveRequest(BaseModel):
     image_base64: str
@@ -151,6 +154,7 @@ def ai_generate(req: AIGenerateRequest):
             width=req.width,
             height=req.height,
             steps=req.steps,
+            model=req.model,
         )
         return {
             "success": True,
@@ -171,6 +175,7 @@ def ai_edit(req: AIEditRequest):
             negative_prompt=req.negative_prompt,
             strength=req.strength,
             steps=req.steps,
+            model=req.model,
         )
         return {"success": True, "image_base64": image_b64}
     except RuntimeError as e:
@@ -187,6 +192,7 @@ def ai_inpaint(req: InpaintRequest):
             prompt=req.prompt,
             negative_prompt=req.negative_prompt,
             steps=req.steps,
+            model=req.model,
         )
         return {"success": True, "image_base64": image_b64}
     except RuntimeError as e:
@@ -202,6 +208,10 @@ def ai_remove_background(req: BackgroundRemoveRequest):
     except RuntimeError as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/ai-models")
+def list_ai_models():
+    """Retrieve available stable diffusion models."""
+    return {"models": ai_engine.get_sd_models()}
 
 # ── Module 3: Mockup Generator ────────────────────────────────────────────────
 

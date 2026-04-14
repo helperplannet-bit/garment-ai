@@ -23,7 +23,7 @@ def check_sd_status() -> dict:
     return {"online": False, "message": "Stable Diffusion offline — start AUTOMATIC1111 at port 7860"}
 
 
-def text_to_image(prompt: str, negative_prompt: str = "", width: int = 512, height: int = 512, steps: int = 20) -> str:
+def text_to_image(prompt: str, negative_prompt: str = "", width: int = 512, height: int = 512, steps: int = 20, model: str = None) -> str:
     """
     Generate image from text prompt via SD txt2img API.
     Returns base64-encoded PNG string.
@@ -39,6 +39,10 @@ def text_to_image(prompt: str, negative_prompt: str = "", width: int = 512, heig
         "batch_size": 1,
         "n_iter": 1,
     }
+    if model:
+        payload["override_settings"] = {"sd_model_checkpoint": model}
+        payload["override_settings_restore_afterwards"] = True
+        
     try:
         r = requests.post(f"{SD_BASE_URL}/sdapi/v1/txt2img", json=payload, timeout=TIMEOUT)
         r.raise_for_status()
@@ -50,7 +54,7 @@ def text_to_image(prompt: str, negative_prompt: str = "", width: int = 512, heig
         raise RuntimeError(f"AI generation failed: {str(e)}")
 
 
-def image_to_image(base64_image: str, prompt: str, negative_prompt: str = "", strength: float = 0.7, steps: int = 20) -> str:
+def image_to_image(base64_image: str, prompt: str, negative_prompt: str = "", strength: float = 0.7, steps: int = 20, model: str = None) -> str:
     """
     Modify existing image based on prompt (img2img).
     Returns base64-encoded PNG string.
@@ -65,6 +69,10 @@ def image_to_image(base64_image: str, prompt: str, negative_prompt: str = "", st
         "sampler_name": "DPM++ 2M Karras",
         "batch_size": 1,
     }
+    if model:
+        payload["override_settings"] = {"sd_model_checkpoint": model}
+        payload["override_settings_restore_afterwards"] = True
+
     try:
         r = requests.post(f"{SD_BASE_URL}/sdapi/v1/img2img", json=payload, timeout=TIMEOUT)
         r.raise_for_status()
@@ -76,7 +84,7 @@ def image_to_image(base64_image: str, prompt: str, negative_prompt: str = "", st
         raise RuntimeError(f"AI edit failed: {str(e)}")
 
 
-def inpaint(base64_image: str, base64_mask: str, prompt: str, negative_prompt: str = "", steps: int = 20) -> str:
+def inpaint(base64_image: str, base64_mask: str, prompt: str, negative_prompt: str = "", steps: int = 20, model: str = None) -> str:
     """
     Inpainting — edit a masked area of an image.
     Returns base64-encoded PNG string.
@@ -99,6 +107,10 @@ def inpaint(base64_image: str, base64_mask: str, prompt: str, negative_prompt: s
         "mask_mode": 0,  # 0: Inpaint masked, 1: Inpaint not masked
         "inpainting_mask_invert": 0,
     }
+    if model:
+        payload["override_settings"] = {"sd_model_checkpoint": model}
+        payload["override_settings_restore_afterwards"] = True
+        
     try:
         r = requests.post(f"{SD_BASE_URL}/sdapi/v1/img2img", json=payload, timeout=TIMEOUT)
         r.raise_for_status()
@@ -133,3 +145,14 @@ def remove_background(base64_image: str) -> str:
         return base64.b64encode(buffer.getvalue()).decode("utf-8")
     except Exception as e:
         raise RuntimeError(f"Background removal failed: {str(e)}")
+
+def get_sd_models() -> list:
+    """Fetch available Stable Diffusion models."""
+    try:
+        r = requests.get(f"{SD_BASE_URL}/sdapi/v1/sd-models", timeout=5)
+        if r.status_code == 200:
+            return [{"title": m["title"], "model_name": m["model_name"]} for m in r.json()]
+    except Exception:
+        pass
+    return []
+
