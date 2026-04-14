@@ -1,85 +1,94 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
-
-/* ── CSS Variables ─────────────────────────────────────────────────────────── */
+/* GAFS Phase 2 Architecture — Premium Design System */
 :root {
-  --bg-base:      #0d0d14;
-  --bg-card:      #13131f;
-  --bg-hover:     #1c1c2e;
-  --bg-canvas:    #0a0a12;
-  --border:       rgba(255,255,255,0.08);
-  --text-primary: #f0f0ff;
-  --text-secondary: #a0a0c0;
-  --text-muted:   #5a5a80;
-  --accent-purple: #7C3AED;
-  --accent-teal:  #2DD4BF;
+  /* Dark Mode Core Palette */
+  --bg-base: #09090b;       /* App background (very dark) */
+  --bg-card: #18181b;       /* Panel background */
+  --bg-hover: #27272a;      /* Hover states */
+  --border: #27272a;        /* Borders */
+  
+  /* Text */
+  --text-primary: #fafafa;
+  --text-secondary: #a1a1aa;
+  --text-muted: #71717a;
+  
+  /* Accents */
+  --accent-purple: #7C3AED; 
+  --accent-teal: #2DD4BF;
+  --accent-grad: linear-gradient(135deg, var(--accent-purple), var(--accent-teal));
+  
+  /* Canvas specifics */
+  --canvas-bg: #111115;
+  --checker-size: 20px;
 }
 
-/* ── Reset ─────────────────────────────────────────────────────────────────── */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-body {
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+html, body, #root {
+  width: 100%; height: 100%; margin: 0; padding: 0;
   background: var(--bg-base);
   color: var(--text-primary);
-  overflow: hidden;
-  height: 100vh;
-  width: 100vw;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  overflow: hidden; /* Prevent body scroll, layout is app-like */
 }
 
-/* ── App Shell ─────────────────────────────────────────────────────────────── */
-.gafs-app {
+/* Base App Shell */
+.app-container {
   display: flex;
   flex-direction: column;
   height: 100vh;
-  overflow: hidden;
 }
 
-.gafs-workspace {
+.app-main {
   display: flex;
   flex: 1;
-  overflow: hidden;
-  margin-top: 56px; /* header height */
-}
-
-/* Left sidebar (toolbar + layers) */
-.gafs-left-sidebar {
-  width: 80px;
-  display: flex;
-  flex-direction: column;
-  background: var(--bg-card);
-  border-right: 1px solid var(--border);
-  position: fixed;
-  left: 0;
-  top: 56px;
-  bottom: 0;
-  z-index: 50;
-  overflow: hidden;
-}
-
-/* The Toolbar takes flex space, LayersPanel at bottom */
-.gafs-left-sidebar .gafs-toolbar {
+  margin-top: 54px; /* offset for fixed header */
   position: relative;
-  flex: 1;
-  top: auto;
-  left: auto;
-  border-right: none;
-}
-
-/* Main content area */
-.gafs-main {
-  flex: 1;
-  margin-left: 80px;
-  margin-right: 240px;
   overflow: hidden;
-  display: flex;
-  flex-direction: column;
 }
 
-/* ── Scrollbar styling ─────────────────────────────────────────────────────── */
-::-webkit-scrollbar          { width: 5px; height: 5px; }
-::-webkit-scrollbar-track    { background: transparent; }
-::-webkit-scrollbar-thumb    { background: var(--border); border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(124,58,237,0.4); }
+/* Custom Scrollbars */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--bg-hover); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
 
-/* ── Utility ───────────────────────────────────────────────────────────────── */
-.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
+/* Common Form Controls */
+.gafs-range-slider {
+  -webkit-appearance: none; width: 100%; height: 4px; border-radius: 2px;
+  background: var(--bg-hover); outline: none; margin: 10px 0;
+}
+.gafs-range-slider::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%;
+  background: #a78bfa; cursor: pointer; border: 2px solid var(--bg-card); box-shadow: 0 0 4px rgba(0,0,0,0.5);
+}
+
+.gafs-btn-primary {
+  background: var(--accent-grad); color: white; border: none; font-weight: 600; font-family: inherit;
+  padding: 10px 16px; border-radius: 8px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.gafs-btn-primary:hover { box-shadow: 0 4px 14px rgba(124, 58, 237, 0.4); transform: translateY(-1px); }
+.gafs-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+
+.gafs-btn-outline {
+  background: transparent; color: var(--text-primary); border: 1px solid var(--border); font-weight: 500; font-family: inherit;
+  padding: 8px 12px; border-radius: 6px; cursor: pointer; transition: all 0.2s;
+}
+.gafs-btn-outline:hover:not(:disabled) { background: var(--bg-hover); border-color: var(--text-muted); }
+
+.gafs-input {
+  background: var(--bg-base); border: 1px solid var(--border); color: var(--text-primary);
+  padding: 8px 12px; border-radius: 6px; font-family: inherit; font-size: 13px; width: 100%; box-sizing: border-box; outline: none; transition: border-color 0.2s;
+}
+.gafs-input:focus { border-color: var(--accent-purple); }
+
+/* Utilities */
+.text-xs { font-size: 11px; }
+.text-sm { font-size: 13px; }
+.text-base { font-size: 14px; }
+.text-lg { font-size: 16px; font-weight: 600; }
+.text-muted { color: var(--text-muted); }
+.mt-2 { margin-top: 8px; }
+.mb-2 { margin-bottom: 8px; }
+.mb-4 { margin-bottom: 16px; }
+.flex { display: flex; }
+.items-center { align-items: center; }
+.gap-2 { gap: 8px; }
+.gap-4 { gap: 16px; }

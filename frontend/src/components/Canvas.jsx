@@ -1,158 +1,189 @@
-import React, { useEffect, useRef, useCallback } from "react";
+import React, { useEffect, useRef } from "react";
 import useEditorStore from "../store/useEditorStore";
 import "./Canvas.css";
 
-const CanvasEditor = ({ onCanvasReady }) => {
-  const canvasElRef = useRef(null);
-  const fabricRef = useRef(null);
+const CanvasEditor = () => {
   const {
-    activeTool, setCanvas, showGrid, setSelectedObject,
-    setLayers, pushHistory, canvasWidth, canvasHeight,
+    setCanvas, setActiveTool, pushHistory,
+    setLayers, setSelectedObject, activeTool,
+    showGrid, setZoom, setIsSaved, canvasWidth, canvasHeight
   } = useEditorStore();
+  const canvasRef = useRef(null);
 
-  /* ── Init Fabric canvas ── */
   useEffect(() => {
     const { fabric } = window;
-    if (!fabric || !canvasElRef.current) return;
-
-    const fc = new fabric.Canvas(canvasElRef.current, {
+    const initCanvas = new fabric.Canvas(canvasRef.current, {
       width: canvasWidth,
       height: canvasHeight,
-      backgroundColor: "#ffffff",
-      preserveObjectStacking: true,
-      stopContextMenu: true,
-      fireRightClick: true,
+      backgroundColor: "#111115", /* default dark */
+      preserveObjectStacking: true, // Crucial for layer logic
     });
 
-    fabricRef.current = fc;
-    setCanvas(fc);
-    if (onCanvasReady) onCanvasReady(fc);
+    setCanvas(initCanvas);
 
-    // Selection events
-    fc.on("selection:created", (e) => setSelectedObject(e.selected?.[0] || null));
-    fc.on("selection:updated", (e) => setSelectedObject(e.selected?.[0] || null));
-    fc.on("selection:cleared", () => setSelectedObject(null));
+    // Save initial state
+    pushHistory(initCanvas.toJSON());
 
-    // History on object modified
-    const saveHistory = () => pushHistory(fc.toJSON());
-    fc.on("object:added", saveHistory);
-    fc.on("object:modified", saveHistory);
-    fc.on("object:removed", saveHistory);
-
-    // Layer sync
-    const syncLayers = () => {
-      const objs = fc.getObjects().map((o, i) => ({
-        id: o.id || i,
-        type: o.type,
-        name: o.name || `${o.type} ${i + 1}`,
-        visible: o.visible !== false,
-      }));
-      setLayers([...objs].reverse());
+    const updateStore = () => {
+      // Sync layer state to React
+      const objects = initCanvas.getObjects().filter(o => !o._isGrid);
+      setLayers([...objects].reverse()); // Top layer is index 0 in UI
+      setIsSaved(false);
     };
-    fc.on("object:added", syncLayers);
-    fc.on("object:removed", syncLayers);
-    fc.on("object:modified", syncLayers);
 
-    return () => { fc.dispose(); };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    const handleSelect = () => {
+      const activeObj = initCanvas.getActiveObject();
+      setSelectedObject(activeObj);
+    };
 
-  /* ── Grid overlay ── */
-  useEffect(() => {
-    const fc = fabricRef.current;
-    if (!fc) return;
-    const { fabric } = window;
+    initCanvas.on("object:added", updateStore);
+    initCanvas.on("object:removed", updateStore);
+    initCanvas.on("object:modified", (e) => {
+      updateStore();
+      pushHistory(initCanvas.toJSON(["id", "name", "selectable", "lockMovementX", "lockMovementY", "lockRotation", "lockScalingX", "lockScalingY", "isMask", "visible"]));
+    });
 
-    // Remove old grid
-    const oldGrid = fc.getObjects().filter((o) => o._isGrid);
-    oldGrid.forEach((o) => fc.remove(o));
+    initCanvas.on("selection:created", handleSelect);
+    initCanvas.on("selection:updated", handleSelect);
+    initCanvas.on("selection:cleared", () => setSelectedObject(null));
 
-    if (showGrid) {
-      const gridSize = 40;
-      const w = fc.width;
-      const h = fc.height;
-      const lines = [];
-      for (let x = 0; x <= w; x += gridSize) {
-        lines.push(new fabric.Line([x, 0, x, h], {
-          stroke: "rgba(124,58,237,0.12)", strokeWidth: 1,
-          selectable: false, evented: false, _isGrid: true,
-        }));
+    // Handle Mask/Brush tagging on path creation
+    initCanvas.on("path:created", (e) => {
+        const path = e.path;
+        if (useEditorStore.getState().activeTool === "mask") {
+            path.set({ isMask: true, name: "AI Mask", opacity: 0.8 });
+        }
+    });
+
+    // -------- ZOOM & PAN LOGIC (Phase 2) --------
+    initCanvas.on("mouse:wheel", (opt) => {
+      const e = opt.e;
+      if (e.ctrlKey || e.metaKey) {
+          // Zoom
+          e.preventDefault();
+          e.stopPropagation();
+          let zoom = initCanvas.getZoom();
+          zoom *= 0.999 ** e.deltaY;
+          if (zoom > 5) zoom = 5;
+          if (zoom < 0.1) zoom = 0.1;
+          initCanvas.zoomToPoint({ x: e.offsetX, y: e.offsetY }, zoom);
+          setZoom(zoom);
+      } else {
+         // Pan vertically/horizontally
+         const vpt = initCanvas.viewportTransform;
+         vpt[4] -= e.deltaX;
+         vpt[5] -= e.deltaY;
+         initCanvas.requestRenderAll();
       }
-      for (let y = 0; y <= h; y += gridSize) {
-        lines.push(new fabric.Line([0, y, w, y], {
-          stroke: "rgba(124,58,237,0.12)", strokeWidth: 1,
-          selectable: false, evented: false, _isGrid: true,
-        }));
-      }
-      lines.forEach((l) => fc.add(l));
-      fc.sendToBack(...lines);
-    }
-    fc.renderAll();
-  }, [showGrid]);
+    });
 
-  /* ── Keyboard shortcuts ── */
-  const handleKeyDown = useCallback((e) => {
-    const fc = fabricRef.current;
-    if (!fc) return;
-    const active = fc.getActiveObject();
+    let isDragging = false;
+    let lastPosX;
+    let lastPosY;
 
-    // Delete selected
-    if ((e.key === "Delete" || e.key === "Backspace") && active && !active.isEditing) {
-      fc.remove(active);
-      fc.discardActiveObject();
-      fc.renderAll();
-    }
-    // Undo
-    if (e.ctrlKey && e.key === "z") {
-      e.preventDefault();
-      const store = useEditorStore.getState();
-      if (store.historyIndex > 0) {
-        const prev = store.history[store.historyIndex - 1];
-        fc.loadFromJSON(prev, () => fc.renderAll());
-        useEditorStore.setState({ historyIndex: store.historyIndex - 1 });
+    initCanvas.on("mouse:down", (opt) => {
+        const evt = opt.e;
+        // Pan if Spacebar down OR Middle mouse clicked OR active tool is 'move'
+        if ((evt.altKey || evt.button === 1 || useEditorStore.getState().activeTool === "move") && !initCanvas.isDrawingMode) {
+            isDragging = true;
+            initCanvas.selection = false;
+            lastPosX = evt.clientX;
+            lastPosY = evt.clientY;
+        }
+    });
+
+    initCanvas.on("mouse:move", (opt) => {
+        if (isDragging) {
+           const e = opt.e;
+           const vpt = initCanvas.viewportTransform;
+           vpt[4] += e.clientX - lastPosX;
+           vpt[5] += e.clientY - lastPosY;
+           initCanvas.requestRenderAll();
+           lastPosX = e.clientX;
+           lastPosY = e.clientY;
+        }
+    });
+
+    initCanvas.on("mouse:up", () => {
+        isDragging = false;
+        if (useEditorStore.getState().activeTool === "select") {
+            initCanvas.selection = true;
+        }
+    });
+
+    // Handle Keyboard shortcuts
+    const handleKeyDown = (e) => {
+      // Don't intercept if typing in an input or a text element
+      if (e.target.tagName.toLowerCase() === "input" || e.target.tagName.toLowerCase() === "textarea") return;
+      if (initCanvas.getActiveObject() && initCanvas.getActiveObject().isEditing) return;
+
+      if ((e.key === "Delete" || e.key === "Backspace") && initCanvas.getActiveObjects().length > 0) {
+        initCanvas.getActiveObjects().forEach((obj) => {
+           if(!obj.locked) initCanvas.remove(obj);
+        });
+        initCanvas.discardActiveObject();
       }
-    }
-    // Redo
-    if (e.ctrlKey && e.key === "y") {
-      e.preventDefault();
-      const store = useEditorStore.getState();
-      if (store.historyIndex < store.history.length - 1) {
-        const next = store.history[store.historyIndex + 1];
-        fc.loadFromJSON(next, () => fc.renderAll());
-        useEditorStore.setState({ historyIndex: store.historyIndex + 1 });
+      
+      // Store shortcuts
+      const state = useEditorStore.getState();
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
+         e.preventDefault();
+         if(state.canUndo()) state.undo();
       }
-    }
-    // Duplicate
-    if (e.ctrlKey && e.key === "d" && active) {
-      e.preventDefault();
-      active.clone((cloned) => {
-        cloned.set({ left: active.left + 20, top: active.top + 20 });
-        fc.add(cloned);
-        fc.setActiveObject(cloned);
-        fc.renderAll();
-      });
-    }
-    // Bring to front
-    if (e.key === "]" && active) { fc.bringToFront(active); fc.renderAll(); }
-    // Send to back
-    if (e.key === "[" && active) { fc.sendToBack(active); fc.renderAll(); }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "y") {
+         e.preventDefault();
+         if(state.canRedo()) state.redo();
+      }
+      
+      // Tool shortcuts
+      if (e.key.toLowerCase() === 'v') setActiveTool("select");
+      if (e.key.toLowerCase() === 't') setActiveTool("text");
+      if (e.key.toLowerCase() === 'r') setActiveTool("rect");
+      if (e.key.toLowerCase() === 'm') setActiveTool("mask");
+      if (e.key.toLowerCase() === ' ') setActiveTool("move");
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      initCanvas.dispose();
+      setCanvas(null);
+    };
   }, []);
 
+  // Grid system toggle
   useEffect(() => {
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handleKeyDown]);
+    const canvas = useEditorStore.getState().canvas;
+    if (!canvas) return;
+
+    if (showGrid) {
+      const gridObjects = [];
+      const { fabric } = window;
+      const gridSize = 50;
+      for (let i = 0; i < (canvas.width / gridSize); i++) {
+        const line = new fabric.Line([i * gridSize, 0, i * gridSize, canvas.height], { stroke: '#27272a', selectable: false, _isGrid: true, evented: false });
+        gridObjects.push(line);
+        canvas.add(line);
+      }
+      for (let i = 0; i < (canvas.height / gridSize); i++) {
+        const line = new fabric.Line([0, i * gridSize, canvas.width, i * gridSize], { stroke: '#27272a', selectable: false, _isGrid: true, evented: false });
+        gridObjects.push(line);
+        canvas.add(line);
+      }
+      // Send grid to bottom visually
+      gridObjects.forEach(obj => obj.sendToBack());
+    } else {
+      canvas.getObjects().forEach(obj => {
+        if (obj._isGrid) canvas.remove(obj);
+      });
+    }
+  }, [showGrid]);
 
   return (
-    <div className="gafs-canvas-wrapper">
-      <div className="gafs-canvas-container">
-        <div className="gafs-canvas-shadow">
-          <canvas ref={canvasElRef} id="gafs-fabric-canvas" />
-        </div>
-      </div>
-      <div className="gafs-canvas-info">
-        <span>{canvasWidth} × {canvasHeight}px</span>
-        <span>•</span>
-        <span>Del: delete · Ctrl+Z: undo · Ctrl+D: duplicate · [ ] : layer order</span>
+    <div className="gafs-canvas-container">
+      <div className="gafs-canvas-wrapper">
+        <canvas ref={canvasRef} />
       </div>
     </div>
   );

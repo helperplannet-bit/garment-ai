@@ -1,134 +1,154 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import useEditorStore from "../store/useEditorStore";
 import { listMockups, generateMockup } from "../api/client";
 import "./MockupPanel.css";
 
 const MockupPanel = () => {
-  const { canvas, setMockupResult, mockupResult, setActivePanel } = useEditorStore();
+  const { activePanel, setActivePanel, canvas: mainCanvas } = useEditorStore();
   const [mockups, setMockups] = useState([]);
-  const [selectedMockup, setSelectedMockup] = useState("tshirt_front.png");
-  const [posX, setPosX] = useState(0.5);
-  const [posY, setPosY] = useState(0.35);
-  const [scale, setScale] = useState(0.4);
+  const [selectedMockup, setSelectedMockup] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const mockupCanvasRef = useRef(null);
+  const [miniCanvas, setMiniCanvas] = useState(null);
+  const [resultImg, setResultImg] = useState(null);
 
   useEffect(() => {
-    listMockups()
-      .then((r) => {
-        setMockups(r.data.mockups || []);
-        if (r.data.mockups?.length > 0) setSelectedMockup(r.data.mockups[0]);
-      })
-      .catch(() => {});
-  }, []);
+    if (activePanel === "mockup") {
+      listMockups().then(res => {
+        setMockups(res.data.mockups);
+        if (res.data.mockups.length > 0 && !selectedMockup) {
+           setSelectedMockup(res.data.mockups[0]);
+        }
+      });
+    }
+  }, [activePanel]);
+
+  // Init mini-canvas
+  useEffect(() => {
+      if (activePanel === "mockup" && !miniCanvas && mockupCanvasRef.current) {
+          const { fabric } = window;
+          const c = new fabric.Canvas(mockupCanvasRef.current, {
+              width: 300, height: 400, backgroundColor: "#1c1c1e"
+          });
+          setMiniCanvas(c);
+      }
+      return () => {
+          if (activePanel !== "mockup" && miniCanvas) {
+              miniCanvas.dispose();
+              setMiniCanvas(null);
+          }
+      };
+  }, [activePanel]);
+
+  // Map Main Canvas payload onto Mini Canvas when Mockup Panel opens
+  useEffect(() => {
+      if (activePanel === "mockup" && miniCanvas && mainCanvas && selectedMockup) {
+          const { fabric } = window;
+          miniCanvas.clear();
+          miniCanvas.backgroundColor = "#1c1c1e";
+
+          // Load background mockup shirt
+          fabric.Image.fromURL(`http://localhost:8000/mockups/${selectedMockup}`, (bgImg) => {
+              // Scale shirt to fit mini canvas
+              const scale = 300 / bgImg.width;
+              bgImg.set({ scaleX: scale, scaleY: scale, selectable: false });
+              miniCanvas.add(bgImg);
+              miniCanvas.centerObject(bgImg);
+              
+              // Load design from main canvas
+              const designB64 = mainCanvas.toDataURL({format: 'png', multiplier: 1});
+              fabric.Image.fromURL(designB64, (designImg) => {
+                  // Scale design initially to look like a shirt graphic (e.g., 40% of shirt width)
+                  const dScale = (300 * 0.4) / designImg.width;
+                  designImg.set({ scaleX: dScale, scaleY: dScale, top: 100, left: 90, borderColor: '#2DD4BF', cornerColor: '#7C3AED' });
+                  miniCanvas.add(designImg);
+                  miniCanvas.setActiveObject(designImg);
+                  miniCanvas.renderAll();
+              }, { crossOrigin: 'anonymous' });
+
+          }, { crossOrigin: 'anonymous' });
+      }
+  }, [activePanel, miniCanvas, selectedMockup]);
 
   const handleGenerate = async () => {
-    if (!canvas) { setError("Canvas is empty"); return; }
-    setError(""); setLoading(true);
-    try {
-      const designB64 = canvas.toDataURL("image/png").replace("data:image/png;base64,", "");
-      const res = await generateMockup(designB64, selectedMockup, posX, posY, scale);
-      setMockupResult(res.data.image_base64);
-    } catch (e) {
-      setError(e.response?.data?.detail || "Mockup generation failed");
-    } finally {
+      if (!miniCanvas || !mainCanvas) return;
+      
+      const designObj = miniCanvas.getObjects().find(o => o.selectable);
+      const bgObj = miniCanvas.getObjects().find(o => !o.selectable);
+      
+      if(!designObj || !bgObj) return;
+
+      setLoading(true);
+      try {
+          // Calculate relative positions!
+          // We need to map the mini-canvas position back to 0-1 relative bounds of the original background image
+          const rawBgWidth = bgObj.width * bgObj.scaleX;
+          const rawBgHeight = bgObj.height * bgObj.scaleY;
+          
+          // design bounding rect
+          const bound = designObj.getBoundingRect();
+          
+          // distance from top-left of the shirt image visually mapping to percentage 0.0-1.0
+          const relX = (bound.left - bgObj.left) / rawBgWidth;
+          const relY = (bound.top - bgObj.top) / rawBgHeight;
+          const relScale = bound.width / rawBgWidth;
+
+          // Main canvas payload (high res)
+          const b64 = mainCanvas.toDataURL({ format: "png", multiplier: 1 }).split(",")[1];
+          
+          const res = await generateMockup(b64, selectedMockup, relX, relY, relScale);
+          setResultImg(res.data.image_base64);
+      } catch(e) {
+          console.error(e);
+          alert("Mockup generation failed");
+      }
       setLoading(false);
-    }
   };
 
-  // Debounced live preview
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (canvas && selectedMockup) handleGenerate();
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [posX, posY, scale, selectedMockup]);
-
-  const handleDownload = () => {
-    if (!mockupResult) return;
-    const a = document.createElement("a");
-    a.href = `data:image/png;base64,${mockupResult}`;
-    a.download = "mockup.png";
-    a.click();
-  };
+  if (activePanel !== "mockup") return null;
 
   return (
     <div className="gafs-mockup-panel">
-      <div className="gafs-panel-header">
-        <div className="gafs-panel-title">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/>
-          </svg>
-          Mockup Generator
-        </div>
-        <button className="gafs-panel-close" onClick={() => setActivePanel(null)}>✕</button>
+      <div className="gafs-ai-panel__header">
+        <h3>Live Mockup Preview</h3>
+        <button className="gafs-icon-btn" onClick={() => setActivePanel(null)}>✕</button>
       </div>
 
-      <div className="gafs-ai-body">
-        {/* Template selector */}
-        <div className="gafs-field">
-          <label className="gafs-field-label">Base Template</label>
-          <div className="gafs-mockup-grid">
-            {mockups.length === 0 ? (
-              <p style={{ color: "var(--text-muted)", fontSize: 12 }}>No templates found. Backend generates them automatically.</p>
-            ) : mockups.map((m) => (
-              <button
-                key={m}
-                className={`gafs-mockup-thumb ${selectedMockup === m ? "active" : ""}`}
-                onClick={() => setSelectedMockup(m)}
+      <div style={{padding: '16px'}}>
+          <label style={{fontSize: '11px', color: 'var(--text-secondary)'}}>SELECT APPAREL</label>
+          <select className="gafs-input mt-2 mb-4" value={selectedMockup} onChange={e => setSelectedMockup(e.target.value)}>
+            {mockups.map(m => ( <option key={m} value={m}>{m.replace('.png', '')}</option> ))}
+          </select>
+          
+          <div className="gafs-mockup-canvas-wrapper" style={{ boxShadow:'0 4px 12px rgba(0,0,0,0.5)', borderRadius:'8px', overflow:'hidden', border:'1px solid var(--border)'}}>
+             <canvas ref={mockupCanvasRef} />
+          </div>
+          
+          <p className="text-xs text-muted mt-2" style={{textAlign:'center'}}>Drag and scale the bounding box precisely onto the T-shirt.</p>
+
+          <button className="gafs-btn-primary mt-2" style={{width:'100%'}} onClick={handleGenerate} disabled={loading}>
+            {loading ? "Compositing High-Res..." : "Generate Final Mockup"}
+          </button>
+      </div>
+
+      {resultImg && (
+          <div className="gafs-mockup-result">
+              <h4 style={{padding: '0 16px', margin:'10px 0', fontSize:'12px', color:'var(--accent-teal)'}}>High-Res Result</h4>
+              <img src={`data:image/png;base64,${resultImg}`} style={{width:'100%'}} alt="Mockup" />
+              <button 
+                  className="gafs-btn-outline" 
+                  style={{margin:'10px 16px', width:'calc(100% - 32px)'}}
+                  onClick={() => {
+                      const a = document.createElement("a"); 
+                      a.href=`data:image/png;base64,${resultImg}`; 
+                      a.download="mockup-export.png"; 
+                      a.click();
+                  }}
               >
-                {m.replace(".png", "").replace("_", " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+                  Download HD Mockup
               </button>
-            ))}
           </div>
-        </div>
-
-        {/* Position controls */}
-        <div className="gafs-field">
-          <label className="gafs-field-label">Horizontal Position: {Math.round(posX * 100)}%</label>
-          <input type="range" className="gafs-slider-input" min={0.1} max={0.9} step={0.01}
-            value={posX} onChange={(e) => setPosX(parseFloat(e.target.value))} />
-        </div>
-
-        <div className="gafs-field">
-          <label className="gafs-field-label">Vertical Position: {Math.round(posY * 100)}%</label>
-          <input type="range" className="gafs-slider-input" min={0.1} max={0.8} step={0.01}
-            value={posY} onChange={(e) => setPosY(parseFloat(e.target.value))} />
-        </div>
-
-        <div className="gafs-field">
-          <label className="gafs-field-label">Design Scale: {Math.round(scale * 100)}%</label>
-          <input type="range" className="gafs-slider-input" min={0.1} max={0.8} step={0.01}
-            value={scale} onChange={(e) => setScale(parseFloat(e.target.value))} />
-        </div>
-
-        {error && <div className="gafs-error-box">{error}</div>}
-
-        <button className={`gafs-generate-btn ${loading ? "loading" : ""}`}
-          onClick={handleGenerate} disabled={loading}>
-          {loading ? <><span className="spinner" /> Generating…</> : <>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-            </svg>
-            Generate Mockup
-          </>}
-        </button>
-
-        {/* Result */}
-        {mockupResult && (
-          <div className="gafs-ai-result">
-            <div className="gafs-ai-result-header">Mockup Preview</div>
-            <img
-              src={`data:image/png;base64,${mockupResult}`}
-              alt="Mockup result"
-              className="gafs-ai-result-img"
-            />
-            <div className="gafs-ai-result-actions">
-              <button className="gafs-result-btn" onClick={handleDownload}>⬇ Download PNG</button>
-            </div>
-          </div>
-        )}
-      </div>
+      )}
     </div>
   );
 };

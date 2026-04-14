@@ -1,91 +1,124 @@
-import React from "react";
+import React, { useState } from "react";
 import useEditorStore from "../store/useEditorStore";
 import "./LayersPanel.css";
 
-const typeIcon = (type) => {
-  const icons = {
-    "i-text": "T",
-    text: "T",
-    rect: "▭",
-    circle: "○",
-    triangle: "△",
-    image: "🖼",
-    path: "✏",
-    group: "⊞",
-  };
-  return icons[type] || "◈";
-};
-
 const LayersPanel = () => {
-  const { layers, canvas } = useEditorStore();
+  const { canvas, layers, setLayers, setSelectedObject, selectedObject } = useEditorStore();
+  const [draggedIdx, setDraggedIdx] = useState(null);
 
-  const selectLayer = (layerId) => {
+  if (!layers || layers.length === 0) return null;
+
+  const handleSelect = (obj) => {
     if (!canvas) return;
-    const objs = canvas.getObjects();
-    // layers are reversed index, so find by position
-    const total = objs.length;
-    const idx = total - 1 - layers.findIndex((l) => l.id === layerId);
-    const obj = objs[idx];
-    if (obj) {
-      canvas.setActiveObject(obj);
-      canvas.renderAll();
+    canvas.setActiveObject(obj);
+    canvas.renderAll();
+    setSelectedObject(obj);
+  };
+
+  const handleToggleVisibility = (e, obj) => {
+    e.stopPropagation();
+    obj.set("visible", !obj.visible);
+    if(canvas) {
+       canvas.renderAll();
+       canvas.fire("object:modified", { target: obj }); // Trigger layer sync
     }
   };
 
-  const toggleVisible = (layerId, e) => {
+  const handleToggleLock = (e, obj) => {
     e.stopPropagation();
-    if (!canvas) return;
-    const objs = canvas.getObjects();
-    const total = objs.length;
-    const layerIdx = layers.findIndex((l) => l.id === layerId);
-    const idx = total - 1 - layerIdx;
-    const obj = objs[idx];
-    if (obj) {
-      obj.set("visible", !obj.visible);
-      canvas.renderAll();
+    const isLocked = obj.locked || false;
+    obj.set({
+      locked: !isLocked,
+      selectable: isLocked, // true if it was locked and we unlock it
+      evented: isLocked
+    });
+    if(canvas) {
+        if (!isLocked && canvas.getActiveObject() === obj) {
+            canvas.discardActiveObject();
+        }
+        canvas.renderAll();
+        canvas.fire("object:modified", { target: obj }); // Trigger layer sync
     }
   };
 
-  const deleteLayer = (layerId, e) => {
-    e.stopPropagation();
-    if (!canvas) return;
-    const objs = canvas.getObjects();
-    const total = objs.length;
-    const layerIdx = layers.findIndex((l) => l.id === layerId);
-    const idx = total - 1 - layerIdx;
-    const obj = objs[idx];
-    if (obj) { canvas.remove(obj); canvas.renderAll(); }
+  // Drag and Drop ordering
+  const onDragStart = (e, index) => {
+     setDraggedIdx(index);
+     e.dataTransfer.effectAllowed = "move";
+  };
+  
+  const onDragOver = (e, index) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+  };
+
+  const onDrop = (e, targetIdx) => {
+      e.preventDefault();
+      if(draggedIdx === null || draggedIdx === targetIdx || !canvas) return;
+      
+      const newLayers = [...layers];
+      const itemsToMove = newLayers.splice(draggedIdx, 1);
+      newLayers.splice(targetIdx, 0, itemsToMove[0]);
+      
+      // Since bottom layer is 0 in Fabric.js, we must reverse map UI to Fabric index
+      const reversedLayers = [...newLayers].reverse();
+      reversedLayers.forEach((obj, idx) => {
+          obj.moveTo(idx);
+      });
+      canvas.renderAll();
+      setLayers(newLayers);
+      setDraggedIdx(null);
   };
 
   return (
-    <div className="gafs-layers">
-      <div className="gafs-layers__header">
-        <svg viewBox="0 0 20 20" fill="currentColor">
-          <path d="M2 6l8-4 8 4-8 4-8-4zM2 12l8 4 8-4M2 9l8 4 8-4"/>
-        </svg>
-        Layers
-        <span className="gafs-layers-count">{layers.length}</span>
+    <div className="gafs-layers-panel">
+      <div className="gafs-layers-panel__header">
+        <h4>Layers ({layers.length})</h4>
+        <span className="gafs-layers-hint" title="Drag to reorder layers">↕ Drag</span>
       </div>
+      <div className="gafs-layers-list">
+        {layers.map((obj, i) => {
+          const isSelected = selectedObject === obj;
+          const isLocked = obj.locked;
+          const isHidden = !obj.visible;
+          
+          let name = obj.name || obj.type;
+          if (name === "i-text") name = "Text";
+          if (name === "rect") name = "Rectangle";
+          if (obj.isMask) name = "AI Mask";
 
-      <div className="gafs-layers__list">
-        {layers.length === 0 ? (
-          <div className="gafs-layers-empty">Canvas is empty</div>
-        ) : (
-          layers.map((layer) => (
-            <div key={layer.id} className="gafs-layer-item" onClick={() => selectLayer(layer.id)}>
-              <span className="gafs-layer-icon">{typeIcon(layer.type)}</span>
-              <span className="gafs-layer-name">{layer.name}</span>
-              <div className="gafs-layer-actions">
-                <button className="gafs-layer-btn" title="Toggle visibility"
-                  onClick={(e) => toggleVisible(layer.id, e)}>
-                  {layer.visible !== false ? "👁" : "🚫"}
+          return (
+            <div
+              key={`${obj.id || i}-${i}`}
+              className={`gafs-layer-item ${isSelected ? "gafs-layer-item--active" : ""}`}
+              onClick={() => handleSelect(obj)}
+              draggable
+              onDragStart={(e) => onDragStart(e, i)}
+              onDragOver={(e) => onDragOver(e, i)}
+              onDrop={(e) => onDrop(e, i)}
+              style={draggedIdx === i ? {opacity: 0.5} : {}}
+            >
+              <div className="gafs-layer-item__drag">⋮⋮</div>
+              <div className="gafs-layer-item__name">{name}</div>
+              <div className="gafs-layer-item__actions">
+                <button className={`gafs-layer-btn ${isLocked ? "gafs-layer-btn--active" : ""}`} onClick={(e) => handleToggleLock(e, obj)} title="Lock">
+                   {isLocked ? (
+                       <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+                   ) : (
+                       <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 019.9-1"/></svg>
+                   )}
                 </button>
-                <button className="gafs-layer-btn gafs-layer-btn--del" title="Delete"
-                  onClick={(e) => deleteLayer(layer.id, e)}>✕</button>
+                <button className={`gafs-layer-btn ${isHidden ? "gafs-layer-btn--active" : ""}`} onClick={(e) => handleToggleVisibility(e, obj)} title="Visible">
+                   {isHidden ? (
+                       <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24M1 1l22 22"/></svg>
+                   ) : (
+                       <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                   )}
+                </button>
               </div>
             </div>
-          ))
-        )}
+          );
+        })}
       </div>
     </div>
   );

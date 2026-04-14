@@ -61,8 +61,8 @@ def extract_blobs(data: dict) -> dict:
                     blob_path = os.path.join(BLOBS_DIR, blob_id)
                     with open(blob_path, "wb") as f:
                         f.write(base64.b64decode(b64_part))
-                    # Point to the backend URL (relative for simplicity)
-                    obj["src"] = f"/assets/blobs/{blob_id}"
+                    # Point to the backend URL explicitly for React to load cross-origin
+                    obj["src"] = f"http://localhost:8000/assets/blobs/{blob_id}"
                 except Exception as e:
                     print(f"Failed to extract blob: {e}")
     
